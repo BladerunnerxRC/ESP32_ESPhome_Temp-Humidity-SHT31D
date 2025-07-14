@@ -37,8 +37,7 @@ api:
 # Over-the-Air Updates
 # -------------------------------
 ota:
-  - platform: esphome
-    password: !secret enviro1_ota_pwd  # OTA update password (stored in secrets.yaml)
+  password: !secret enviro1_ota_pwd  # OTA update password (stored in secrets.yaml)
 
 # -------------------------------
 # Time Synchronization
