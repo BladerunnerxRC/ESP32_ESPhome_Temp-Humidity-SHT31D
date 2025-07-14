@@ -131,7 +131,7 @@ binary_sensor:
 # -------------------------------
 switch:
   - platform: gpio
-    name: "Wifi Connect LED Switch"    # Controls onboard LED (GPIO2)
+    name: "WiFi Connect LED Switch"    # Controls onboard LED (GPIO2)
     pin: 2
     id: onboard_led
     inverted: false                    # Set to true if LED logic is inverted
