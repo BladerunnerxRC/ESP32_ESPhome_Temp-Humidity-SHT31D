@@ -4,94 +4,95 @@
 # Substitutions for easy tuning
 # -------------------------------
 substitutions:
-  temperature_calibration: "-3.0"      # Calibration offset for temperature sensor (in °C)
-  humidity_calibration: "-1.0"         # Calibration offset for humidity sensor (in %)
-  update_interval_s: "30s"             # Sensor update interval
-  update_interval_wifi: "60s"          # WiFi signal update interval
+  temperature_calibration: "-3.0" # Calibration offset for temperature sensor (in °C)
+  humidity_calibration: "-1.0" # Calibration offset for humidity sensor (in %)
+  update_interval_s: "30s" # Sensor update interval
+  update_interval_wifi: "60s" # WiFi signal update interval
 
 # -------------------------------
 # Device and ESP32 Board Setup
 # -------------------------------
 esphome:
-  name: "environmental-a1"             # Node name
-  friendly_name: ENVIRO-A1             # Friendly name for Home Assistant
+  name: "environmental-a1" # Node name
+  friendly_name: ENVIRO-A1 # Friendly name for Home Assistant
 
 esp32:
-  board: esp32dev                      # ESP32 board type
+  board: esp32dev # ESP32 board type
   framework:
-    type: arduino                      # Use Arduino framework
-    version: recommended               # Use recommended version
+    type: arduino # Use Arduino framework
+    version: recommended # Use recommended version
 
 # -------------------------------
 # Logging Configuration
 # -------------------------------
 logger:
-  level: VERBOSE                       # Log level (options: ERROR, WARN, INFO, VERBOSE, VERY_VERBOSE)
+  level: VERBOSE # Log level (options: ERROR, WARN, INFO, VERBOSE, VERY_VERBOSE)
 
 # -------------------------------
 # Home Assistant API Integration
 # -------------------------------
 api:
   encryption:
-    key: !secret enviro1_api_key       # API encryption key (stored in secrets.yaml)
+    key: !secret enviro_a1_api_key # API encryption key (stored in secrets.yaml)
 
 # -------------------------------
 # Over-the-Air Updates
 # -------------------------------
 ota:
-  - platform: esphome
-    password: !secret enviro1_ota_pwd  # OTA update password (stored in secrets.yaml)
+- platform: esphome
+  password: !secret enviro_a1_ota_pwd # OTA update password (stored in secrets.yaml)
 
 # -------------------------------
 # Time Synchronization
 # -------------------------------
 time:
-  - platform: homeassistant
-    id: ha_time                        # Sync time with Home Assistant
+- platform: homeassistant
+  id: ha_time # Sync time with Home Assistant
 
 # -------------------------------
 # I2C Bus Configuration
 # -------------------------------
 i2c:
   id: bus_a
-  sda: GPIO21                          # I2C SDA pin
-  scl: GPIO22                          # I2C SCL pin
-  scan: true                           # Scan for I2C devices at startup
-  frequency: 800kHz                    # I2C bus frequency
-  timeout: 10ms                        # I2C timeout
+  sda: GPIO21 # I2C SDA pin
+  scl: GPIO22 # I2C SCL pin
+  scan: true # Scan for I2C devices at startup
+  frequency: 800kHz # I2C bus frequency
+  timeout: 10ms # I2C timeout
 
 # -------------------------------
 # WiFi Configuration
 # -------------------------------
 wifi:
-  ssid: !secret wifi_ssid              # WiFi SSID (stored in secrets.yaml)
-  password: !secret wifi_password      # WiFi password (stored in secrets.yaml)
-  power_save_mode: none                # Disable WiFi power saving
-  output_power: 15.5dB                 # WiFi output power
-  manual_ip:                           # Static IP configuration
+  ssid: !secret wifi_ssid # WiFi SSID (stored in secrets.yaml)
+  password: !secret wifi_password # WiFi password (stored in secrets.yaml)
+  power_save_mode: none # Disable WiFi power saving
+  output_power: 15.5dB # WiFi output power
+  manual_ip:
+    # Static IP configuration
     static_ip: 10.100.50.16
-    gateway:   10.100.50.1
-    subnet:    255.255.255.0
-    dns1:      8.8.8.8
-    dns2:      8.8.4.4  
+    gateway: 10.100.50.1
+    subnet: 255.255.255.0
+    dns1: 8.8.8.8
+    dns2: 8.8.4.4
   on_connect:
     then:
-      - switch.turn_on: onboard_led    # Turn on onboard LED when connected
+    - switch.turn_on: onboard_led # Turn on onboard LED when connected
   on_disconnect:
     then:
-      - switch.turn_off: onboard_led   # Turn off onboard LED when disconnected
-      - logger.log: "WiFi disconnected. Waiting 30 seconds before deciding to restart."
-      - delay: 30s
-      - if:
-          condition:
-            lambda: 'return !WiFi.isConnected();'
-          then:
-            - logger.log: "WiFi still disconnected after delay. Restarting now."
-            - lambda: |-
-                ESP.restart();         # Restart ESP32 if still disconnected after delay
+    - switch.turn_off: onboard_led # Turn off onboard LED when disconnected
+    - logger.log: "WiFi disconnected. Waiting 30 seconds before deciding to restart."
+    - delay: 30s
+    - if:
+        condition:
+          lambda: 'return !WiFi.isConnected();'
+        then:
+        - logger.log: "WiFi still disconnected after delay. Restarting now."
+        - lambda: |-
+            ESP.restart();         # Restart ESP32 if still disconnected after delay
   ap:
-    ssid: "Enviro-A1 Fallback Hotspot" # Fallback AP SSID
-    password: !secret enviro1_ap_pwd   # Fallback AP password (stored in secrets.yaml)
+    ssid: !secret enviro_a1_ap_sid "Enviro-A1 Fallback Hotspot" # Fallback AP SSID
+    password: !secret envienviro_a1_ap_pwd # Fallback AP password (stored in secrets.yaml)
 
 # captive_portal:                     # (Optional) Enable captive portal for fallback AP
 
@@ -99,44 +100,44 @@ wifi:
 # Sensors
 # -------------------------------
 sensor:
-  - platform: wifi_signal
-    name: "WiFi Signal"                # Reports WiFi signal strength (RSSI)
-    update_interval: ${update_interval_wifi}
-    device_class: signal_strength
-    
-  - platform: sht3xd                   # SHT31D temperature/humidity sensor
-    i2c_id: bus_a                      # Use defined I2C bus
-    address: 0x44                      # Default I2C address for SHT31D
-    temperature:
-        name: "SHT31_Temperature"      # Temperature sensor entity
-        id: temp
-        filters:
-          - lambda: return x + ${temperature_calibration};  # Apply calibration offset
-    humidity:
-        name: "SHT_31_Humidity"        # Humidity sensor entity
-        id: humidity
-        filters:
-          - lambda: return x + ${humidity_calibration};     # Apply calibration offset
-    update_interval: ${update_interval_s}
+- platform: wifi_signal
+  name: "WiFi Signal" # Reports WiFi signal strength (RSSI)
+  update_interval: ${update_interval_wifi}
+  device_class: signal_strength
+
+- platform: sht3xd # SHT31D temperature/humidity sensor
+  i2c_id: bus_a # Use defined I2C bus
+  address: 0x44 # Default I2C address for SHT31D
+  temperature:
+    name: "SHT31_Temperature" # Temperature sensor entity
+    id: temp
+    filters:
+    - lambda: return x + ${temperature_calibration}; # Apply calibration offset
+  humidity:
+    name: "SHT_31_Humidity" # Humidity sensor entity
+    id: humidity
+    filters:
+    - lambda: return x + ${humidity_calibration}; # Apply calibration offset
+  update_interval: ${update_interval_s}
 
 # -------------------------------
 # Binary Sensors
 # -------------------------------
 binary_sensor:
-  - platform: status
-    name: "Connection Status"          # Reports device connection status
-    id: connection_status
-    entity_category: diagnostic
+- platform: status
+  name: "Connection Status" # Reports device connection status
+  id: connection_status
+  entity_category: diagnostic
 
 # -------------------------------
 # Switches
 # -------------------------------
 switch:
-  - platform: gpio
-    name: "WiFi Connect LED Switch"    # Controls onboard LED (GPIO2)
-    pin: 2
-    id: onboard_led
-    inverted: false                    # Set to true if LED logic is inverted
+- platform: gpio
+  name: "WiFi Connect LED Switch" # Controls onboard LED (GPIO2)
+  pin: 2
+  id: onboard_led
+  inverted: false # Set to true if LED logic is inverted
 
 # -------------------------------
 # GPIO Pin Assignments Table
