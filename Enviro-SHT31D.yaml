@@ -91,7 +91,7 @@ wifi:
         - lambda: |-
             ESP.restart();         # Restart ESP32 if still disconnected after delay
   ap:
-    ssid: !secret enviro_a1_ap_sid "Enviro-A1 Fallback Hotspot" # Fallback AP SSID
+    ssid: !secret enviro_a1_ap_sid # Fallback AP SSID
     password: !secret envienviro_a1_ap_pwd # Fallback AP password (stored in secrets.yaml)
 
 # captive_portal:                     # (Optional) Enable captive portal for fallback AP
