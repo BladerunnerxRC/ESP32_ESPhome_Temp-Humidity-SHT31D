@@ -21,6 +21,22 @@ substitutions:
 esphome:
   name: "enviro-a1"
   friendly_name: ENVIRO-A1
+  on_boot:
+    priority: -100
+    then:
+      - logger.log: "Boot completed. Waiting for connection..."
+      - wait_until:
+          condition:
+            wifi.connected:
+      - wait_until:
+          condition:
+            api.connected:
+      - logger.log: "ENVIRO-A1 booted and connected"
+      - homeassistant.service:
+          service: persistent_notification.create
+          data:
+            title: "ENVIRO-A1"
+            message: "Device restarted and is now online"
 
 esp32:
   board: esp32dev
