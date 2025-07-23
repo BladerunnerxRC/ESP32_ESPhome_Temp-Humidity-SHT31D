@@ -119,7 +119,7 @@ sensor:
 
   # How long the device has been running
   - platform: uptime
-    id: enviro_b1_uptime_sensor
+    id: enviro_a1_uptime_sensor
     name: "ENVIRO-A1 Uptime"
 
 binary_sensor:
