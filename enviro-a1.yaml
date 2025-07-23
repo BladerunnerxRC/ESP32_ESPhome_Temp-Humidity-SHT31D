@@ -1,0 +1,169 @@
+# ESPhome configuration for the ENVIRO-A1 ESP32 board.
+#
+# works on INFO ESPHome 2025.7.3 FW for HW
+# -------------------------------
+# GPIO Pin Assignments Table
+# -------------------------------
+# | Function                | GPIO Pin | Notes                        |
+# |-------------------------|----------|------------------------------|
+# | I2C SDA                 | GPIO21   | Data line for I2C bus        |
+# | I2C SCL                 | GPIO22   | Clock line for I2C bus       |
+# | Onboard LED (WiFi LED)  | GPIO2    | Controls onboard status LED  |
+# -------------------------------
+substitutions:
+  # Calibration offsets applied to the DHT22 readings
+  temperature_calibration: "0.0"
+  humidity_calibration: "0.0"
+  # Measurement intervals
+  update_interval_s: "30s"
+  update_interval_wifi: "60s"
+
+esphome:
+  name: "enviro-a1"
+  friendly_name: ENVIRO-A1
+
+esp32:
+  board: esp32dev
+  framework:
+    type: arduino
+    version: recommended # Options: recommended, dev, or latest
+
+# Enable detailed logging. UART output is disabled because the serial port
+# is not used in normal operation.
+logger:
+  level: DEBUG # Options: ERROR, WARN, INFO, DEBUG, VERY_VERBOSE
+  baud_rate: 0
+
+# Enable the Home Assistant API with encrypted communication
+api:
+  encryption:
+    key: !secret enviro_a1_api_key
+
+# Over-the-air update credentials
+ota:
+  - platform: esphome
+    password: !secret enviro_a1_api_key
+
+# Use Home Assistant as the time source
+time:
+  - platform: homeassistant
+    id: ha_time
+
+wifi:
+  # Wi-Fi credentials
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  power_save_mode: none
+  output_power: 15.5dB
+  # Static network configuration
+  manual_ip:
+    static_ip: 10.100.50.16
+    gateway: 10.100.50.1
+    subnet: 255.255.255.0
+    dns1: 8.8.8.8
+    dns2: 8.8.4.4
+  # Turn on the LED when connected and restart the board if the connection is lost.
+  # This will also create a persistent notification in Home Assistant.
+  # If the connection is lost for more than 30 seconds, the device will restart.
+  on_connect:
+    then:
+      - switch.turn_on: onboard_led
+      - logger.log: "WiFi connected"
+      - homeassistant.service:
+          service: persistent_notification.create
+          data:
+            title: "ENVIRO-A1"
+            message: "WiFi connection established"
+  on_disconnect:
+    then:
+      - switch.turn_off: onboard_led
+      - logger.log: "WiFi disconnected. Waiting 30 seconds before deciding to restart."
+      - delay: 30s
+      - if:
+          condition:
+            lambda: 'return !WiFi.isConnected();'
+          then:
+            - logger.log: "WiFi still disconnected after delay. Restarting now."
+            - lambda: |-
+                ESP.restart(); 
+# Restart ESP32 if still disconnected after delay
+  # Fallback access point settings
+  ap:
+    ssid: !secret enviro_a1_ap_sid
+    password: !secret enviro_a1_ap_pwd
+
+# captive_portal: # (Optional) Enable captive portal for fallback AP
+
+sensor:
+  # Report Wi-Fi signal strength
+  - platform: wifi_signal
+    name: "WiFi Signal"
+    update_interval: ${update_interval_wifi}
+    device_class: signal_strength
+
+  # SHT31D temperature/humidity sensor
+  - platform: sht3xd # SHT31D temperature/humidity sensor
+    i2c_id: bus_a # Use defined I2C bus
+    address: 0x44 # Default I2C address for SHT31D
+    temperature:
+      name: "SHT31_Temperature" # Temperature sensor entity
+      id: temp
+    filters:
+    - lambda: return x + ${temperature_calibration}; # Apply calibration offset
+  humidity:
+    name: "Humidity" # Humidity sensor entity
+    id: humidity
+    filters:
+    - lambda: return x + ${humidity_calibration}; # Apply calibration offset
+  update_interval: ${update_interval_s}
+
+  # How long the device has been running
+  - platform: uptime
+    id: enviro_b1_uptime_sensor
+    name: "ENVIRO-A1 Uptime"
+
+binary_sensor:
+  # Show if the device is online
+  - platform: status
+    name: "Connection Status"
+    id: connection_status
+    entity_category: diagnostic
+
+  # Trigger a reboot from Home Assistant when the input_boolean is toggled
+  - platform: homeassistant
+    name: "Reboot ENVIRO-A1 Trigger"
+    entity_id: input_boolean.reboot_enviro_a1
+    id: reboot_trigger
+    on_press:
+      - if:
+          condition:
+            lambda: 'return id(enviro_a1_uptime_sensor).state > 60;'
+          then:
+            - logger.log: "Manual reboot requested via Home Assistant (passes debounce)"
+            # Feedback blink removed for simplicity
+            - homeassistant.service:
+                service: input_boolean.turn_off
+                data:
+                  entity_id: input_boolean.reboot_enviro_a1
+            - logger.log: "Device rebooting now"
+            - switch.turn_on: reboot_enviro_a1_restart
+          else:
+            - logger.log: "Debounce blocked reboot: uptime too short"
+            - homeassistant.service:
+                service: input_boolean.turn_off
+                data:
+                  entity_id: input_boolean.reboot_enviro_a1
+
+# Define the onboard LED
+switch:
+  # Controls the onboard LED connected to GPIO2
+  - platform: gpio
+    name: "Wifi Connect LED Switch"
+    pin: 2
+    id: onboard_led
+    inverted: false # Adjust if LED logic is inverted
+
+  # Exposes a restart switch
+  - platform: restart
+    name: "Reboot_ENVIRO-A1"
+    id: reboot_enviro_a1_restart
