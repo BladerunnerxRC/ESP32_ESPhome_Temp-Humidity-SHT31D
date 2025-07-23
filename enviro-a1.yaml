@@ -24,9 +24,33 @@ substitutions:
   update_interval_s: "30s"
   update_interval_wifi: "60s"
 
+globals:
+  - id: g_temperature_calibration
+    type: float
+    restore_value: true
+    initial_value: ${temperature_calibration}
+  - id: g_humidity_calibration
+    type: float
+    restore_value: true
+    initial_value: ${humidity_calibration}
+  - id: g_update_interval_s
+    type: int
+    restore_value: true
+    initial_value: 30
+  - id: g_update_interval_wifi
+    type: int
+    restore_value: true
+    initial_value: 60
+
 esphome:
   name: "enviro-a1"
   friendly_name: ENVIRO-A1
+  on_boot:
+    priority: -100
+    then:
+      - lambda: |-
+          id(g_update_interval_s) = atoi("${update_interval_s}");
+          id(g_update_interval_wifi) = atoi("${update_interval_wifi}");
 
 esp32:
   board: esp32dev
@@ -127,12 +151,12 @@ sensor:
       name: "SHT31_Temperature" # Temperature sensor entity
       id: temp
       filters:
-        - lambda: return x + ${temperature_calibration}; # Apply calibration offset
+        - lambda: return x + id(g_temperature_calibration); # Apply calibration offset
     humidity:
       name: "Humidity" # Humidity sensor entity
       id: humidity
       filters:
-        - lambda: return x + ${humidity_calibration}; # Apply calibration offset
+        - lambda: return x + id(g_humidity_calibration); # Apply calibration offset
     update_interval: ${update_interval_s}
 
   # How long the device has been running
@@ -186,3 +210,57 @@ switch:
   - platform: restart
     name: "Reboot_ENVIRO-A1"
     id: reboot_enviro_a1_restart
+
+number:
+  - platform: template
+    name: "Temperature Calibration"
+    id: temperature_calibration_number
+    min_value: -10
+    max_value: 10
+    step: 0.1
+    restore_value: true
+    initial_value: ${temperature_calibration}
+    set_action:
+      - globals.set:
+          id: g_temperature_calibration
+          value: !lambda 'return x;'
+
+  - platform: template
+    name: "Humidity Calibration"
+    id: humidity_calibration_number
+    min_value: -10
+    max_value: 10
+    step: 0.1
+    restore_value: true
+    initial_value: ${humidity_calibration}
+    set_action:
+      - globals.set:
+          id: g_humidity_calibration
+          value: !lambda 'return x;'
+
+  - platform: template
+    name: "Update Interval (s)"
+    id: update_interval_seconds_number
+    min_value: 10
+    max_value: 3600
+    step: 1
+    restore_value: true
+    initial_value: 30
+    set_action:
+      - globals.set:
+          id: g_update_interval_s
+          value: !lambda 'return (int)x;'
+
+  - platform: template
+    name: "WiFi Update Interval (s)"
+    id: update_interval_wifi_seconds_number
+    min_value: 10
+    max_value: 3600
+    step: 1
+    restore_value: true
+    initial_value: 60
+    set_action:
+      - globals.set:
+          id: g_update_interval_wifi
+          value: !lambda 'return (int)x;'
+
