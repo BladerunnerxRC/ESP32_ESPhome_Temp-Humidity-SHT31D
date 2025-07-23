@@ -11,7 +11,7 @@
 # | Onboard LED (WiFi LED)  | GPIO2    | Controls onboard status LED  |
 # -------------------------------
 substitutions:
-  # Calibration offsets applied to the DHT22 readings
+  # Calibration offsets applied to the SHT31D readings
   temperature_calibration: "0.0"
   humidity_calibration: "0.0"
   # Measurement intervals
