@@ -21,8 +21,8 @@ substitutions:
   temperature_calibration: "0.0"
   humidity_calibration: "0.0"
   # Measurement intervals
-  update_interval_s: "30s"
-  update_interval_wifi: "60s"
+  update_interval_s: "30"
+  update_interval_wifi: "60"
 
 esphome:
   name: "enviro-a1"
@@ -116,7 +116,7 @@ sensor:
   # Report Wi-Fi signal strength
   - platform: wifi_signal
     name: "WiFi Signal"
-    update_interval: ${update_interval_wifi}
+    update_interval: ${update_interval_wifi}s
     device_class: signal_strength
 
   # SHT31D temperature/humidity sensor (I2C)
@@ -127,13 +127,13 @@ sensor:
       name: "SHT31_Temperature" # Temperature sensor entity
       id: temp
       filters:
-        - lambda: return x + ${temperature_calibration}; # Apply calibration offset
+        - lambda: return x + id(temperature_calibration_number).state; # Apply calibration offset
     humidity:
       name: "Humidity" # Humidity sensor entity
       id: humidity
       filters:
-        - lambda: return x + ${humidity_calibration}; # Apply calibration offset
-    update_interval: ${update_interval_s}
+        - lambda: return x + id(humidity_calibration_number).state; # Apply calibration offset
+    update_interval: ${update_interval_s}s
 
   # How long the device has been running
   - platform: uptime
@@ -186,3 +186,46 @@ switch:
   - platform: restart
     name: "Reboot_ENVIRO-A1"
     id: reboot_enviro_a1_restart
+
+number:
+  - platform: template
+    name: "Temperature Calibration Offset"
+    id: temperature_calibration_number
+    initial_value: ${temperature_calibration}
+    restore_value: true
+    optimistic: true
+    min_value: -10.0
+    max_value: 10.0
+    step: 0.1
+
+  - platform: template
+    name: "Humidity Calibration Offset"
+    id: humidity_calibration_number
+    initial_value: ${humidity_calibration}
+    restore_value: true
+    optimistic: true
+    min_value: -10.0
+    max_value: 10.0
+    step: 0.1
+
+  - platform: template
+    name: "Sensor Update Interval"
+    id: update_interval_s_number
+    unit_of_measurement: "s"
+    initial_value: ${update_interval_s}
+    restore_value: true
+    optimistic: true
+    min_value: 5
+    max_value: 3600
+    step: 5
+
+  - platform: template
+    name: "WiFi Signal Update Interval"
+    id: update_interval_wifi_number
+    unit_of_measurement: "s"
+    initial_value: ${update_interval_wifi}
+    restore_value: true
+    optimistic: true
+    min_value: 5
+    max_value: 3600
+    step: 5
