@@ -1,6 +1,11 @@
 # ESPhome configuration for the ENVIRO-A1 ESP32 board.
 #
 # works on INFO ESPHome 2025.7.3 FW for HW
+# ESP32 used was
+# Chip is ESP32-D0WDQ6 (revision v1.0)
+# Features: WiFi, BT, Dual Core, Coding Scheme None
+# Crystal is 40MHz
+# Flash size: 4MB
 # -------------------------------
 # GPIO Pin Assignments Table
 # -------------------------------
