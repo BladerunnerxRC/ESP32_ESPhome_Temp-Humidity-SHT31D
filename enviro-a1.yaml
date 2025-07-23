@@ -1,11 +1,11 @@
 # ESPhome configuration for the ENVIRO-A1 ESP32 board.
 #
-# works on INFO ESPHome 2025.7.3 FW for HW
-# ESP32 used was
-# Chip is ESP32-D0WDQ6 (revision v1.0)
-# Features: WiFi, BT, Dual Core, Coding Scheme None
-# Crystal is 40MHz
-# Flash size: 4MB
+# Works with INFO ESPHome 2025.7.3 firmware for hardware:
+#   - ESP32-D0WDQ6 (revision v1.0)
+#   - Features: WiFi, BT, Dual Core, Coding Scheme None
+#   - 40MHz crystal
+#   - 4MB flash
+#
 # -------------------------------
 # GPIO Pin Assignments Table
 # -------------------------------
@@ -15,6 +15,7 @@
 # | I2C SCL                 | GPIO22   | Clock line for I2C bus       |
 # | Onboard LED (WiFi LED)  | GPIO2    | Controls onboard status LED  |
 # -------------------------------
+
 substitutions:
   # Calibration offsets applied to the SHT31D readings
   temperature_calibration: "0.0"
@@ -30,14 +31,21 @@ esphome:
 esp32:
   board: esp32dev
   framework:
-    type: arduino
+    type: esp-idf
     version: recommended # Options: recommended, dev, or latest
 
-# Enable detailed logging. UART output is disabled because the serial port
-# is not used in normal operation.
+# Configure I2C bus for the SHT31D sensor
+i2c:
+  id: bus_a
+  sda: 21
+  scl: 22
+  scan: true
+
+# Enable detailed logging. UART output is disabled when baud_rate=0.
 logger:
   level: DEBUG # Options: ERROR, WARN, INFO, DEBUG, VERY_VERBOSE
-  baud_rate: 0
+  baud_rate: 115200 # enable UART logging for debugging
+  # baud_rate: 0 # disable UART logging
 
 # Enable the Home Assistant API with encrypted communication
 api:
@@ -67,32 +75,37 @@ wifi:
     subnet: 255.255.255.0
     dns1: 8.8.8.8
     dns2: 8.8.4.4
-  # Turn on the LED when connected and restart the board if the connection is lost.
-  # This will also create a persistent notification in Home Assistant.
-  # If the connection is lost for more than 30 seconds, the device will restart.
+
+  # Turn on the LED when connected and log in the console
   on_connect:
     then:
-      - switch.turn_on: onboard_led
+      - switch.turn_on:
+          id: onboard_led
       - logger.log: "WiFi connected"
       - homeassistant.service:
           service: persistent_notification.create
           data:
             title: "ENVIRO-A1"
             message: "WiFi connection established"
+
+  # Handle disconnection: wait 30s, then only restart if still offline
   on_disconnect:
     then:
-      - switch.turn_off: onboard_led
-      - logger.log: "WiFi disconnected. Waiting 30 seconds before deciding to restart."
+      - switch.turn_off:
+          id: onboard_led
+      - logger.log: "WiFi disconnected. Waiting 30 seconds before restart."
       - delay: 30s
       - if:
           condition:
-            lambda: 'return !WiFi.isConnected();'
+            wifi.connected: {}       # use {} here
           then:
-            - logger.log: "WiFi still disconnected after delay. Restarting now."
-            - lambda: |-
-                ESP.restart(); 
-# Restart ESP32 if still disconnected after delay
-  # Fallback access point settings
+            - logger.log: "WiFi reconnected during delay, not restarting."
+          else:
+            - logger.log: "Still disconnected, restarting now."
+            - switch.turn_on:
+                id: reboot_enviro_a1_restart
+
+  # Fallback access point settings for when Wi-Fi is not available
   ap:
     ssid: !secret enviro_a1_ap_sid
     password: !secret enviro_a1_ap_pwd
@@ -106,21 +119,21 @@ sensor:
     update_interval: ${update_interval_wifi}
     device_class: signal_strength
 
-  # SHT31D temperature/humidity sensor
-  - platform: sht3xd # SHT31D temperature/humidity sensor
+  # SHT31D temperature/humidity sensor (I2C)
+  - platform: sht3xd
     i2c_id: bus_a # Use defined I2C bus
     address: 0x44 # Default I2C address for SHT31D
     temperature:
       name: "SHT31_Temperature" # Temperature sensor entity
       id: temp
-    filters:
-    - lambda: return x + ${temperature_calibration}; # Apply calibration offset
-  humidity:
-    name: "Humidity" # Humidity sensor entity
-    id: humidity
-    filters:
-    - lambda: return x + ${humidity_calibration}; # Apply calibration offset
-  update_interval: ${update_interval_s}
+      filters:
+        - lambda: return x + ${temperature_calibration}; # Apply calibration offset
+    humidity:
+      name: "Humidity" # Humidity sensor entity
+      id: humidity
+      filters:
+        - lambda: return x + ${humidity_calibration}; # Apply calibration offset
+    update_interval: ${update_interval_s}
 
   # How long the device has been running
   - platform: uptime
@@ -141,17 +154,19 @@ binary_sensor:
     id: reboot_trigger
     on_press:
       - if:
+          # Prevent reboot during first 60 seconds of uptime (debounce)
           condition:
             lambda: 'return id(enviro_a1_uptime_sensor).state > 60;'
           then:
             - logger.log: "Manual reboot requested via Home Assistant (passes debounce)"
-            # Feedback blink removed for simplicity
+            # Turn off the HA boolean so it resets for next use
             - homeassistant.service:
                 service: input_boolean.turn_off
                 data:
                   entity_id: input_boolean.reboot_enviro_a1
             - logger.log: "Device rebooting now"
-            - switch.turn_on: reboot_enviro_a1_restart
+            - switch.turn_on:
+                id: reboot_enviro_a1_restart
           else:
             - logger.log: "Debounce blocked reboot: uptime too short"
             - homeassistant.service:
@@ -159,16 +174,15 @@ binary_sensor:
                 data:
                   entity_id: input_boolean.reboot_enviro_a1
 
-# Define the onboard LED
 switch:
-  # Controls the onboard LED connected to GPIO2
+  # Controls the onboard LED connected to GPIO2 (WiFi status indicator)
   - platform: gpio
     name: "Wifi Connect LED Switch"
     pin: 2
     id: onboard_led
-    inverted: false # Adjust if LED logic is inverted
+    inverted: true # ESP32 DevKit onboard LED is active LOW
 
-  # Exposes a restart switch
+  # Exposes a restart switch to Home Assistant
   - platform: restart
     name: "Reboot_ENVIRO-A1"
     id: reboot_enviro_a1_restart
