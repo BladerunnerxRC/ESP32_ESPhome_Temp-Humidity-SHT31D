@@ -146,6 +146,7 @@ sensor:
 
   # SHT31D temperature/humidity sensor (I2C)
   - platform: sht3xd
+    id: sht31d_component
     i2c_id: bus_a # Use defined I2C bus
     address: 0x44 # Default I2C address for SHT31D
     temperature:
@@ -217,8 +218,7 @@ button:
     name: "Refresh Sensors"
     id: refresh_sensors
     on_press:
-      - component.update: temp
-      - component.update: humidity
+      - component.update: sht31d_component
       - component.update: wifi_signal_sensor
       - component.update: enviro_a1_uptime_sensor
 
