@@ -140,6 +140,7 @@ sensor:
   # Report Wi-Fi signal strength
   - platform: wifi_signal
     name: "WiFi Signal"
+    id: wifi_signal_sensor
     update_interval: ${update_interval_wifi}
     device_class: signal_strength
 
@@ -211,6 +212,16 @@ switch:
     name: "Reboot_ENVIRO-A1"
     id: reboot_enviro_a1_restart
 
+button:
+  - platform: template
+    name: "Refresh Sensors"
+    id: refresh_sensors
+    on_press:
+      - component.update: temp
+      - component.update: humidity
+      - component.update: wifi_signal_sensor
+      - component.update: enviro_a1_uptime_sensor
+
 number:
   - platform: template
     name: "Temperature Calibration"
@@ -224,6 +235,7 @@ number:
       - globals.set:
           id: g_temperature_calibration
           value: !lambda 'return x;'
+      - button.press: refresh_sensors
 
   - platform: template
     name: "Humidity Calibration"
@@ -237,6 +249,7 @@ number:
       - globals.set:
           id: g_humidity_calibration
           value: !lambda 'return x;'
+      - button.press: refresh_sensors
 
   - platform: template
     name: "Update Interval (s)"
