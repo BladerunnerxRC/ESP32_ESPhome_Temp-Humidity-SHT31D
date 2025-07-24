@@ -18,8 +18,8 @@
 
 substitutions:
   # Calibration offsets applied to the SHT31D readings
-  temperature_calibration: "0.0"
-  humidity_calibration: "0.0"
+  temperature_calibration: "-5.7"
+  humidity_calibration: "5.4"
   # Measurement intervals
   update_interval_s: "30s"
   update_interval_wifi: "60s"
