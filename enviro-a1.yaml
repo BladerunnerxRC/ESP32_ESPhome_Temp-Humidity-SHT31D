@@ -204,7 +204,7 @@ switch:
     name: "Wifi Connect LED Switch"
     pin: 2
     id: onboard_led
-    inverted: true # ESP32 DevKit onboard LED is active LOW
+    inverted: False # ESP32 DevKit onboard LED is active LOW
 
   # Exposes a restart switch to Home Assistant
   - platform: restart
