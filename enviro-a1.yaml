@@ -153,12 +153,12 @@ sensor:
       name: "SHT31_Temperature" # Temperature sensor entity
       id: temp
       filters:
-        - lambda: return x + id(g_temperature_calibration)
+        - lambda: return x + id(g_temperature_calibration);
     humidity:
       name: "Humidity" # Humidity sensor entity
       id: humidity
       filters:
-        - lambda: return x + id(g_humidity_calibration)
+        - lambda: return x + id(g_humidity_calibration);
     update_interval: ${update_interval_s}
 
   # How long the device has been running
@@ -263,6 +263,7 @@ number:
       - globals.set:
           id: g_update_interval_s
           value: !lambda 'return (int)x;'
+      - button.press: refresh_sensors
 
   - platform: template
     name: "WiFi Update Interval (s)"
@@ -276,3 +277,4 @@ number:
       - globals.set:
           id: g_update_interval_wifi
           value: !lambda 'return (int)x;'
+      - button.press: refresh_sensors
