@@ -28,19 +28,19 @@ globals:
   - id: g_temperature_calibration
     type: float
     restore_value: true
-    initial_value: ${temperature_calibration}
+    initial_value: "${temperature_calibration}"
   - id: g_humidity_calibration
     type: float
     restore_value: true
-    initial_value: ${humidity_calibration}
+    initial_value: "${humidity_calibration}"
   - id: g_update_interval_s
     type: int
     restore_value: true
-    initial_value: 30
+    initial_value: "30"
   - id: g_update_interval_wifi
     type: int
     restore_value: true
-    initial_value: 60
+    initial_value: "60"
 
 esphome:
   name: "enviro-a1"
