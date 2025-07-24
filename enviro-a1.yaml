@@ -153,12 +153,12 @@ sensor:
       name: "SHT31_Temperature" # Temperature sensor entity
       id: temp
       filters:
-        - lambda: return x + id(g_temperature_calibration); # Apply calibration offset
+        - lambda: return x + id(g_temperature_calibration)
     humidity:
       name: "Humidity" # Humidity sensor entity
       id: humidity
       filters:
-        - lambda: return x + id(g_humidity_calibration); # Apply calibration offset
+        - lambda: return x + id(g_humidity_calibration)
     update_interval: ${update_interval_s}
 
   # How long the device has been running
@@ -184,7 +184,7 @@ binary_sensor:
           condition:
             lambda: 'return id(enviro_a1_uptime_sensor).state > 60;'
           then:
-            - logger.log: "Manual reboot requested via Home Assistant (passes debounce)"
+            - logger.log: "Manual reboot requested via Home Assistant"
             # Turn off the HA boolean so it resets for next use
             - homeassistant.service:
                 service: input_boolean.turn_off
@@ -276,4 +276,3 @@ number:
       - globals.set:
           id: g_update_interval_wifi
           value: !lambda 'return (int)x;'
-
