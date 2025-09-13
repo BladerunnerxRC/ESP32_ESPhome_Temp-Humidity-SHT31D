@@ -9,7 +9,7 @@
   <p>
     This repository holds the ESPHome YAML for the ENVIRO-A1 ESP32 board—an environmental monitor with live-tunable temperature, humidity, uptime, and Wi-Fi diagnostics, complete with connectivity safety logic and Home Assistant integration.
   </p>
-# Confirmed to work with ESPHome v2025.8.3
+# Confirmed to work with ESPHome v2025.8.4
 
 [Changelog](https://esphome.io/changelog/2025.8.0/#release-202581---august-25)
 
