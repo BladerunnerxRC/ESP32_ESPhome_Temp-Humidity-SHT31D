@@ -1,6 +1,6 @@
 # ESPhome configuration for the ENVIRO-A1 ESP32 board.
 #
-# Works with INFO ESPHome 2025.7.3 firmware for hardware:
+# Works with INFO ESPHome 2026.4.2 firmware for hardware:
 #   - ESP32-D0WDQ6 (revision v1.0)
 #   - Features: WiFi, BT, Dual Core, Coding Scheme None
 #   - 40MHz crystal
