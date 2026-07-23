@@ -6,7 +6,6 @@
 #   - 40MHz crystal
 #   - 4MB flash
 #
-#
 # -------------------------------
 # GPIO Pin Assignments Table
 # -------------------------------
@@ -18,46 +17,37 @@
 # -------------------------------
 
 substitutions:
-  # Calibration offsets applied to the SHT31D readings
+  # Default calibration offsets applied to the SHT31D readings
   temperature_calibration: "-5.7"
   humidity_calibration: "5.4"
-  # Measurement intervals
-  update_interval_s: "30s"
-  update_interval_wifi: "60s"
-
-globals:
-  - id: g_temperature_calibration
-    type: float
-    restore_value: true
-    initial_value: "${temperature_calibration}"
-  - id: g_humidity_calibration
-    type: float
-    restore_value: true
-    initial_value: "${humidity_calibration}"
-  - id: g_update_interval_s
-    type: int
-    restore_value: true
-    initial_value: "30"
-  - id: g_update_interval_wifi
-    type: int
-    restore_value: true
-    initial_value: "60"
+  # Default measurement intervals in seconds
+  update_interval_s: "30"
+  update_interval_wifi: "60"
 
 esphome:
   name: "enviro-a1"
   friendly_name: ENVIRO-A1
+  # Re-apply the restored update intervals to the pollers after boot,
+  # since restore_value only restores the number states, not the pollers.
   on_boot:
     priority: -100
     then:
       - lambda: |-
-          id(g_update_interval_s) = atoi("${update_interval_s}");
-          id(g_update_interval_wifi) = atoi("${update_interval_wifi}");
+          if (!isnan(id(update_interval_seconds_number).state)) {
+            id(sht31d_component).set_update_interval((uint32_t) (id(update_interval_seconds_number).state * 1000));
+            id(sht31d_component).stop_poller();
+            id(sht31d_component).start_poller();
+          }
+          if (!isnan(id(update_interval_wifi_seconds_number).state)) {
+            id(wifi_signal_sensor).set_update_interval((uint32_t) (id(update_interval_wifi_seconds_number).state * 1000));
+            id(wifi_signal_sensor).stop_poller();
+            id(wifi_signal_sensor).start_poller();
+          }
 
 esp32:
   board: esp32dev
   framework:
-    type: esp-idf
-    version: recommended # Options: recommended, dev, or latest
+    type: esp-idf # Default framework since ESPHome 2025.2
 
 # Configure I2C bus for the SHT31D sensor
 i2c:
@@ -81,6 +71,9 @@ api:
 ota:
   - platform: esphome
     password: !secret enviro_a1_api_key
+
+# Reboot into safe mode if boot loops are detected so OTA stays reachable
+safe_mode:
 
 # Use Home Assistant as the time source
 time:
@@ -107,8 +100,8 @@ wifi:
       - switch.turn_on:
           id: onboard_led
       - logger.log: "WiFi connected"
-      - homeassistant.service:
-          service: persistent_notification.create
+      - homeassistant.action:
+          action: persistent_notification.create
           data:
             title: "ENVIRO-A1"
             message: "WiFi connection established"
@@ -122,7 +115,7 @@ wifi:
       - delay: 30s
       - if:
           condition:
-            wifi.connected: {}       # use {} here
+            wifi.connected: {}
           then:
             - logger.log: "WiFi reconnected during delay, not restarting."
           else:
@@ -135,37 +128,44 @@ wifi:
     ssid: !secret enviro_a1_ap_sid
     password: !secret enviro_a1_ap_pwd
 
-# captive_portal: # (Optional) Enable captive portal for fallback AP
+# Serve a setup page when the fallback AP is active
+captive_portal:
 
 sensor:
   # Report Wi-Fi signal strength
   - platform: wifi_signal
     name: "WiFi Signal"
     id: wifi_signal_sensor
-    update_interval: ${update_interval_wifi}
-    device_class: signal_strength
+    update_interval: ${update_interval_wifi}s
+    entity_category: diagnostic
 
   # SHT31D temperature/humidity sensor (I2C)
   - platform: sht3xd
     id: sht31d_component
     i2c_id: bus_a # Use defined I2C bus
     address: 0x44 # Default I2C address for SHT31D
+    heater_enabled: false # Keep the internal heater off so it doesn't skew readings
     temperature:
       name: "SHT31_Temperature" # Temperature sensor entity
       id: temp
       filters:
-        - lambda: return x + id(g_temperature_calibration);
+        - lambda: |-
+            if (isnan(id(temperature_calibration_number).state)) return x;
+            return x + id(temperature_calibration_number).state;
     humidity:
       name: "Humidity" # Humidity sensor entity
       id: humidity
       filters:
-        - lambda: return x + id(g_humidity_calibration);
-    update_interval: ${update_interval_s}
+        - lambda: |-
+            if (isnan(id(humidity_calibration_number).state)) return x;
+            return x + id(humidity_calibration_number).state;
+    update_interval: ${update_interval_s}s
 
   # How long the device has been running
   - platform: uptime
     id: enviro_a1_uptime_sensor
     name: "ENVIRO-A1 Uptime"
+    entity_category: diagnostic
 
 binary_sensor:
   # Show if the device is online
@@ -181,14 +181,14 @@ binary_sensor:
     id: reboot_trigger
     on_press:
       - if:
-          # Prevent reboot during first 60 seconds of uptime (debounce)
+          # Prevent reboot during first 60 seconds after boot (debounce)
           condition:
-            lambda: 'return id(enviro_a1_uptime_sensor).state > 60;'
+            lambda: 'return millis() > 60000;'
           then:
             - logger.log: "Manual reboot requested via Home Assistant"
             # Turn off the HA boolean so it resets for next use
-            - homeassistant.service:
-                service: input_boolean.turn_off
+            - homeassistant.action:
+                action: input_boolean.turn_off
                 data:
                   entity_id: input_boolean.reboot_enviro_a1
             - logger.log: "Device rebooting now"
@@ -196,8 +196,8 @@ binary_sensor:
                 id: reboot_enviro_a1_restart
           else:
             - logger.log: "Debounce blocked reboot: uptime too short"
-            - homeassistant.service:
-                service: input_boolean.turn_off
+            - homeassistant.action:
+                action: input_boolean.turn_off
                 data:
                   entity_id: input_boolean.reboot_enviro_a1
 
@@ -207,7 +207,7 @@ switch:
     name: "Wifi Connect LED Switch"
     pin: 2
     id: onboard_led
-    inverted: False # ESP32 DevKit onboard LED is active LOW
+    inverted: false
 
   # Exposes a restart switch to Home Assistant
   - platform: restart
@@ -224,18 +224,20 @@ button:
       - component.update: enviro_a1_uptime_sensor
 
 number:
+  # Calibration offsets are read directly by the sensor filters above,
+  # so a new value takes effect on the next measurement.
   - platform: template
     name: "Temperature Calibration"
     id: temperature_calibration_number
     min_value: -10
     max_value: 10
     step: 0.1
+    unit_of_measurement: "°C"
+    entity_category: config
+    optimistic: true
     restore_value: true
     initial_value: ${temperature_calibration}
     set_action:
-      - globals.set:
-          id: g_temperature_calibration
-          value: !lambda 'return x;'
       - button.press: refresh_sensors
 
   - platform: template
@@ -244,27 +246,32 @@ number:
     min_value: -10
     max_value: 10
     step: 0.1
+    unit_of_measurement: "%"
+    entity_category: config
+    optimistic: true
     restore_value: true
     initial_value: ${humidity_calibration}
     set_action:
-      - globals.set:
-          id: g_humidity_calibration
-          value: !lambda 'return x;'
       - button.press: refresh_sensors
 
+  # Interval changes are applied to the pollers immediately.
   - platform: template
     name: "Update Interval (s)"
     id: update_interval_seconds_number
     min_value: 10
     max_value: 3600
     step: 1
+    unit_of_measurement: "s"
+    mode: box
+    entity_category: config
+    optimistic: true
     restore_value: true
-    initial_value: 30
+    initial_value: ${update_interval_s}
     set_action:
-      - globals.set:
-          id: g_update_interval_s
-          value: !lambda 'return (int)x;'
-      - button.press: refresh_sensors
+      - lambda: |-
+          id(sht31d_component).set_update_interval((uint32_t) (x * 1000));
+          id(sht31d_component).stop_poller();
+          id(sht31d_component).start_poller();
 
   - platform: template
     name: "WiFi Update Interval (s)"
@@ -272,10 +279,14 @@ number:
     min_value: 10
     max_value: 3600
     step: 1
+    unit_of_measurement: "s"
+    mode: box
+    entity_category: config
+    optimistic: true
     restore_value: true
-    initial_value: 60
+    initial_value: ${update_interval_wifi}
     set_action:
-      - globals.set:
-          id: g_update_interval_wifi
-          value: !lambda 'return (int)x;'
-      - button.press: refresh_sensors
+      - lambda: |-
+          id(wifi_signal_sensor).set_update_interval((uint32_t) (x * 1000));
+          id(wifi_signal_sensor).stop_poller();
+          id(wifi_signal_sensor).start_poller();
