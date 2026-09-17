@@ -120,7 +120,7 @@
     <li><strong>SHT31D Temp &amp; Humidity</strong> (<code>sht31d_component</code>)
       <ul>
         <li>I²C @ 0x44 on <code>bus_a</code>, internal heater disabled</li>
-        <li>Lambda filters add the calibration Number values to each reading</li>
+        <li>Lambda filters reject nonfinite readings, add calibration Number values, and clamp humidity to 0–100%</li>
         <li>Interval <code>${update_interval_s}</code> seconds, adjustable at runtime</li>
       </ul>
     </li>
@@ -131,6 +131,7 @@
 
   <h2 id="binary-sensors">⚙️ Binary Sensors</h2>
   <ul>
+    <li><strong>SHT31D Readings Stale</strong> – problem diagnostic when either reading is missing or older than three configured polling intervals plus five seconds; HA retains the last good values</li>
     <li><strong>Connection Status</strong> (<code>connection_status</code>) – device health</li>
     <li><strong>Reboot Trigger</strong> (<code>reboot_trigger</code>) – tied to HA <code>input_boolean.reboot_enviro_a1</code> (debounced 60 s)</li>
   </ul>

@@ -149,17 +149,26 @@ sensor:
     temperature:
       name: "SHT31_Temperature" # Temperature sensor entity
       id: temp
+      on_value:
+        - lambda: |-
+            if (std::isfinite(x)) id(last_temperature_ms) = millis();
       filters:
         - lambda: |-
+            if (!std::isfinite(x)) return {};
             if (isnan(id(temperature_calibration_number).state)) return x;
             return x + id(temperature_calibration_number).state;
     humidity:
       name: "Humidity" # Humidity sensor entity
       id: humidity
+      on_value:
+        - lambda: |-
+            if (std::isfinite(x)) id(last_humidity_ms) = millis();
       filters:
         - lambda: |-
-            if (isnan(id(humidity_calibration_number).state)) return x;
-            return x + id(humidity_calibration_number).state;
+            if (!std::isfinite(x)) return {};
+            const float offset = id(humidity_calibration_number).state;
+            const float calibrated = x + (std::isfinite(offset) ? offset : 0.0f);
+            return fminf(100.0f, fmaxf(0.0f, calibrated));
     update_interval: ${update_interval_s}s
 
   # How long the device has been running
@@ -168,7 +177,31 @@ sensor:
     name: "ENVIRO-A1 Uptime"
     entity_category: diagnostic
 
+# Volatile timestamps: restored readings must never look fresh after reboot.
+globals:
+  - id: last_temperature_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+  - id: last_humidity_ms
+    type: uint32_t
+    restore_value: false
+    initial_value: '0'
+
 binary_sensor:
+  - platform: template
+    name: "SHT31D Readings Stale"
+    device_class: problem
+    entity_category: diagnostic
+    lambda: |-
+      const float seconds = id(update_interval_seconds_number).state;
+      const uint32_t limit = uint32_t((std::isfinite(seconds) ? seconds : ${update_interval_s}) * 3000.0f) + 5000U;
+      const uint32_t now = millis();
+      return !id(temp).has_state() || !id(humidity).has_state() ||
+             !std::isfinite(id(temp).state) || !std::isfinite(id(humidity).state) ||
+             uint32_t(now - id(last_temperature_ms)) > limit ||
+             uint32_t(now - id(last_humidity_ms)) > limit;
+
   # Show if the device is online
   - platform: status
     name: "Connection Status"
