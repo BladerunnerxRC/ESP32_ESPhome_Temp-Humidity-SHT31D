@@ -43,7 +43,7 @@
     <tbody>
       <tr><td>I²C SDA</td><td>21</td><td>Data line for I²C bus</td></tr>
       <tr><td>I²C SCL</td><td>22</td><td>Clock line for I²C bus</td></tr>
-      <tr><td>Onboard LED (Wi-Fi LED)</td><td>2</td><td>Status LED; active LOW</td></tr>
+      <tr><td>Onboard LED (Wi-Fi LED)</td><td>2</td><td>Status LED; configured active HIGH (verify on hardware)</td></tr>
     </tbody>
   </table>
 
@@ -89,6 +89,7 @@
 
   <hr />
 
+  <p>API disconnection does not reboot the device; sensor sampling continues during Home Assistant maintenance.</p>
   <h2 id="api--ota">🔒 API &amp; OTA</h2>
   <ul>
     <li><strong>API</strong>: encrypted key via <code>!secret enviro_a1_api_key</code></li>
@@ -108,9 +109,9 @@
     <li>Credentials from secrets, <code>power_save_mode: none</code>, <code>output_power: 15.5 dB</code></li>
     <li>Static IP: 10.100.50.16 / Gateway: 10.100.50.1 / Subnet: 255.255.255.0</li>
     <li>DNS: 8.8.8.8, 8.8.4.4</li>
-    <li><strong>on_connect</strong>: turns on LED, logs “WiFi connected,” fires HA notification</li>
-    <li><strong>on_disconnect</strong>: turns off LED, logs, waits 30 s, then conditionally restarts</li>
-    <li><strong>Fallback AP</strong>: SSID/password from secrets, with <code>captive_portal</code> enabled for recovery setup</li>
+    <li><strong>on_connect</strong>: turns on LED and logs “WiFi connected”; connection notifications belong in Home Assistant</li>
+    <li><strong>on_disconnect</strong>: turns off LED and logs; native Wi-Fi recovery waits 15 minutes and preserves fallback AP access</li>
+    <li><strong>Fallback AP</strong>: SSID/password from secrets, opens after 90 seconds, with <code>captive_portal</code> enabled for recovery setup</li>
   </ul>
 
   <hr />
