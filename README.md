@@ -6,6 +6,7 @@
 <body>
 
   <h1>ENVIRO-A1 ESPHome Configuration</h1>
+  <p><strong>Development integration branch:</strong> <code>ESPHome_ESP32_SHT31D_-Dev</code> contains the combined changes from PRs #16, #17, #18, and #19. Apply future reviewed PR changes here for combined validation before promotion to <code>main</code>.</p>
   <p>Credentials are local: see <a href="docs/secrets.md">secrets setup and existing-checkout migration</a>. Use <code>secrets.example.yaml</code> as a template.</p>
   <p>
     This repository holds the ESPHome YAML for the ENVIRO-A1 ESP32 board—an environmental monitor with live-tunable temperature, humidity, uptime, and Wi-Fi diagnostics, complete with connectivity safety logic and Home Assistant integration.
