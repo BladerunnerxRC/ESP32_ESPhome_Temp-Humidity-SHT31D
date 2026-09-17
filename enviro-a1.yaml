@@ -1,6 +1,6 @@
 # ESPhome configuration for the ENVIRO-A1 ESP32 board.
 #
-# Works with INFO ESPHome 2026.4.2 firmware for hardware:
+# Targets ESPHome 2026.9.0; hardware validation pending:
 #   - ESP32-D0WDQ6 (revision v1.0)
 #   - Features: WiFi, BT, Dual Core, Coding Scheme None
 #   - 40MHz crystal
@@ -26,6 +26,7 @@ substitutions:
   update_interval_wifi: "60"
 
 esphome:
+  min_version: 2026.9.0
   name: "enviro-a1"
   friendly_name: ENVIRO-A1
   # Re-apply the restored update intervals to the pollers after boot,
@@ -48,7 +49,7 @@ esphome:
 esp32:
   board: esp32dev
   framework:
-    type: esp-idf # Default framework since ESPHome 2025.2
+    type: esp-idf
 
 # Configure I2C bus for the SHT31D sensor
 i2c:
@@ -68,10 +69,10 @@ api:
   encryption:
     key: !secret enviro_a1_api_key
 
-# Over-the-air update credentials
+# Required encrypted OTA. Follow docs/ota.md before upgrading older firmware.
 ota:
   - platform: esphome
-    password: !secret enviro_a1_api_key
+    encryption: {}
 
 # Reboot into safe mode if boot loops are detected so OTA stays reachable
 safe_mode:

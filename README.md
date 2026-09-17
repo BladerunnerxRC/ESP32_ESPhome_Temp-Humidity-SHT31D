@@ -9,7 +9,9 @@
   <p>
     This repository holds the ESPHome YAML for the ENVIRO-A1 ESP32 board—an environmental monitor with live-tunable temperature, humidity, uptime, and Wi-Fi diagnostics, complete with connectivity safety logic and Home Assistant integration.
   </p>
-# Confirmed to work with ESPHome v2026.4.2
+# Targets ESPHome v2026.9.0; device validation pending
+
+Follow [OTA migration and validation](docs/ota.md) before installing on older firmware.
 
 [Changelog](https://esphome.io/changelog/)
 
@@ -91,7 +93,7 @@
   <h2 id="api--ota">🔒 API &amp; OTA</h2>
   <ul>
     <li><strong>API</strong>: encrypted key via <code>!secret enviro_a1_api_key</code></li>
-    <li><strong>OTA</strong>: platform = esphome, password = same encrypted key</li>
+    <li><strong>OTA</strong>: required encryption using the existing API key; staged migration required for older firmware</li>
     <li><strong>Safe Mode</strong>: enabled so the device stays OTA-reachable after repeated boot failures</li>
   </ul>
 
