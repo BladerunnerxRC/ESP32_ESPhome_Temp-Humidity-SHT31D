@@ -60,7 +60,7 @@ i2c:
 
 # Enable detailed logging. UART output is disabled when baud_rate=0.
 logger:
-  level: DEBUG # Options: ERROR, WARN, INFO, DEBUG, VERY_VERBOSE
+  level: INFO # Options: ERROR, WARN, INFO, DEBUG, VERY_VERBOSE
   baud_rate: 115200 # enable UART logging for debugging
   # baud_rate: 0 # disable UART logging
 
