@@ -50,7 +50,12 @@ esp32:
   board: esp32dev
   framework:
     type: esp-idf
-
+    version: recommended
+    advanced:
+      minimum_chip_revision: "3.1"
+      sram1_as_iram: true
+      flash_chip: generic
+      
 # Configure I2C bus for the SHT31D sensor
 i2c:
   id: bus_a
